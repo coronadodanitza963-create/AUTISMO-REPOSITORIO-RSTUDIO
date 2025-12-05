@@ -1,0 +1,266 @@
+---
+title: "Análisis de Diagnóstico de ASD con Regresión Logística"
+format: html
+editor: visual - GRUPO 2 
+---
+
+# Introducción:
+
+## **1. INTRODUCCIÓN**
+
+El análisis de supervivencia permite estudiar cuánto tiempo transcurre hasta que ocurre un evento de interés, por ejemplo: fallecimiento, recaída, alta médica, etc. A diferencia de otros análisis, aquí algunos sujetos pueden no llegar a presentar el evento durante el estudio, lo que se denomina **censura**.
+
+Mediante este análisis podemos:
+
+-   Estimar la probabilidad de supervivencia en el tiempo.
+
+-   Comparar grupos mediante **curvas de Kaplan-Meier**.
+
+-   Determinar si existen diferencias estadísticamente significativas usando **Log-Rank**.
+
+-   Modelar el efecto de factores mediante el **modelo de regresión de Cox**.
+
+Este proceso permite evaluar no solo *si ocurre* el evento, sino también *cuándo ocurre*.
+
+## 1. Instalación y Carga de Paquetes
+
+-   En esta sección, instalaremos y cargaremos los paquetes necesarios para el análisis. Esto incluye herramientas para leer datos, manipularlos, ajustar modelos y crear gráficos.
+
+```{r}
+# Instalación de paquetes (solo se instalan si no están)
+required_pkgs <- c("survival", "survminer", "tidyverse", "readr", "broom")
+to_install <- required_pkgs[!(required_pkgs %in% installed.packages()[,"Package"])]
+if(length(to_install)) install.packages(to_install)
+
+# Carga de paquetes
+library(survival)
+library(survminer)
+library(tidyverse)
+library(readr)
+library(broom)
+
+```
+
+## 2. Carga y Preparación de los Datos
+
+-   Aquí cargaremos el archivo "autismo.csv" y limpiaremos los datos para el análisis. Reemplazaremos valores inválidos como "?" en la columna de edad y convertiremos variables categóricas en factores.
+
+-   **Paquetes utilizados:** readr (para read_csv), dplyr (para filter).
+
+-   **Gráfico:** Un histograma de la distribución de la edad para visualizar la variable numérica clave después de la limpieza.
+
+```{r}
+# Cargar los datos
+datos <- read_csv("C:/Users/TU USUARIO/Desktop/DATA/autismo.csv")
+
+# Vista general
+head(datos)
+summary(datos)
+names(datos)
+```
+
+## 3. ANÁLISIS DE SUPERVIVENCIA — Preparar variables (tiempo y evento)
+
+Qué se hará y por qué: Definimos qué columnas usaremos como tiempo y evento. Verificamos y recodificamos status a 0/1 si es necesario.
+
+```{r}
+
+# ----------------------
+# 4. Definir columnas de tiempo y evento (usando TUS nombres reales)
+# ----------------------
+
+time_col <- "Edad"               # variable de tiempo (Edad)
+status_col <- "Diagnostico_ASD"  # evento: 1 = diagnóstico ASD, 0 = no
+
+# Comprobar que existen en el dataframe datos o df
+if (exists("datos")) {
+  df <- datos
+} else if (exists("data")) {
+  df <- data
+} else {
+  stop("No existe un dataframe llamado 'datos' ni 'data'.")
+}
+
+# Validar existencia de columnas
+if (!(time_col %in% names(df))) stop(paste("❌ No existe la columna de tiempo:", time_col))
+if (!(status_col %in% names(df))) stop(paste("❌ No existe la columna de evento:", status_col))
+
+# ---- Recodificación del evento ----
+# Ver valores únicos del evento antes de recodificar
+unique_vals <- unique(df[[status_col]])
+print(unique_vals)
+
+# Si no está en formato 0/1, lo recodificamos
+if (!all(na.omit(df[[status_col]]) %in% c(0,1))) {
+  df[[status_col]] <- tolower(as.character(df[[status_col]]))
+  
+  df[[status_col]] <- ifelse(df[[status_col]] %in% c("1","si","sí","yes","positivo","diagnosticado","true","t"),
+                             1,
+                             ifelse(df[[status_col]] %in% c("0","no","negativo","false","f","ninguno"),
+                                    0,
+                                    NA))
+}
+
+# Confirmar tabla final del evento (0 = NO ASD, 1 = ASD)
+table(df[[status_col]], useNA = "ifany")
+
+
+```
+
+# 4. CREAR OBJETO Surv
+
+Qué se hará y por qué: Creamos el objeto Surv(time, event) que es requerido por funciones KM y Cox.
+
+```{r}
+# ----------------------
+# 5. Crear objeto Surv con valores reales del dataset (corregido)
+# ----------------------
+
+# Asegurar que el dataset está en df
+df <- datos
+
+# Convertir Edad a numérico (si es texto / factor)
+df$Edad <- as.numeric(df$Edad)
+
+# Crear evento binario a partir de Género (ejemplo: masculino = evento)
+df$Genero_evento <- ifelse(df$Genero == "Masculino", 1, 0)
+
+# Crear el objeto de supervivencia
+surv_obj <- Surv(time = df$Edad, event = df$Genero_evento)
+
+# Mostrar primeras filas
+head(surv_obj)
+
+# Resumen del objeto Surv
+summary(surv_obj)
+
+
+```
+
+# 5. CURVAS DE KAPLAN–MEIER
+
+Qué se hará y por qué: Estimaremos curvas KM global y estratificadas por genero y ictericia_al_nacer (variables relevantes en tu dataset). Estas curvas comparan la probabilidad de no haber sido diagnosticado por edad.
+
+```{r}
+# ----------------------
+# 6. Kaplan-Meier (global y estratificado)
+# ----------------------
+# Asegurarnos de que las variables de grupo existen y son factores
+df$Genero <- as.factor(df$Genero)                # gender
+if ("ictericia_al_nacer" %in% names(df)) {
+  df$ictericia_al_nacer <- as.factor(df$ictericia_al_nacer)
+}
+
+# KM global
+km_global <- survfit(surv_obj ~ 1, data = df)
+print(summary(km_global))
+ggsurvplot(km_global, data = df,
+           conf.int = TRUE, risk.table = TRUE,
+           xlab = "Edad (unidades según dataset)",
+           ylab = "Probabilidad de no tener diagnóstico (supervivencia)")
+
+# KM por género
+if ("genero" %in% names(df)) {
+  km_gen <- survfit(surv_obj ~ genero, data = df)
+  print(summary(km_gen))
+  ggsurvplot(km_gen, data = df, pval = FALSE, conf.int = TRUE, risk.table = TRUE,
+             legend.title = "Género", xlab = "Edad", ylab = "Supervivencia")
+}
+
+# KM por ictericia al nacer (si existe)
+if ("ictericia_al_nacer" %in% names(df)) {
+  km_icter <- survfit(surv_obj ~ ictericia_al_nacer, data = df)
+  print(summary(km_icter))
+  ggsurvplot(km_icter, data = df, pval = FALSE, conf.int = TRUE, risk.table = TRUE,
+             legend.title = "Ictericia al nacer", xlab = "Edad", ylab = "Supervivencia")
+}
+
+
+```
+
+# 6. REGRESIÓN DE COX (Modelo multivariado)
+
+Qué se hará y por qué: Ajustaremos un modelo de Cox para estimar hazard ratios (HR) de covariables clínicas (ej.: género, etnicidad, ictericia_al_nacer, uso_prev_aplicacion y las puntuaciones P1–P10). Esto permite controlar factores simultáneamente.
+
+```{r}
+# ----------------------
+# 8. Regresión de Cox (adaptado al dataset real)
+# ----------------------
+
+# Asegurar que el dataset se llama df
+df <- datos
+
+# Definir explícitamente la variable de tiempo y evento
+time_col <- "Edad"
+status_col <- "Diagnostico_ASD"   # evento (0 / 1)
+
+# Convertir Edad a numérico (si no lo es)
+df$Edad <- as.numeric(df$Edad)
+
+# Convertir Diagnostico_ASD a binario numérico si no lo es
+df$Diagnostico_ASD <- ifelse(df$Diagnostico_ASD == "Sí" | df$Diagnostico_ASD == "si" | df$Diagnostico_ASD == 1, 1, 0)
+
+# Selección manual de covariables reales
+covariables <- c(
+  "Genero",
+  "Etnicidad",
+  "Ictericia_al_nacer",
+  "Uso_prev_aplicacion",
+  paste0("Puntuacion_P", 1:10)
+)
+
+# Mantener solo las que realmente existen en el dataset
+covariables <- covariables[covariables %in% names(df)]
+covariables
+
+# Convertir a factor las variables categóricas
+for (v in covariables) {
+  if (is.character(df[[v]])) df[[v]] <- as.factor(df[[v]])
+}
+
+# Crear fórmula dinámica para el modelo Cox
+formula_cox <- as.formula(
+  paste0("Surv(", time_col, ", ", status_col, ") ~ ", paste(covariables, collapse = " + "))
+)
+
+formula_cox  # mostrar fórmula generada
+
+# Ajustar modelo Cox
+cox_model <- coxph(formula_cox, data = df)
+summary(cox_model)
+
+# Tabla de HR con intervalos de confianza
+tidy_cox <- broom::tidy(cox_model, exponentiate = TRUE, conf.int = TRUE)
+print(tidy_cox)
+
+# Verificar supuesto de riesgos proporcionales
+cox_zph <- cox.zph(cox_model)
+print(cox_zph)
+
+# Graficar evaluación de proporcionalidad de riesgos
+plot(cox_zph)
+
+
+```
+
+# 7. HIPÓTESIS Y NIVEL DE SIGNIFICANCIA
+
+Qué se hará y por qué: Declaramos formalmente las hipótesis y el nivel de significancia usado en las pruebas.
+
+Prueba Log-Rank (comparación de curvas):
+
+H0: Las curvas de supervivencia son iguales entre grupos.
+
+H1: Las curvas difieren entre al menos dos grupos.
+
+Regresión de Cox (por cada coeficiente β):
+
+H0: β = 0 (HR = 1, sin efecto)
+
+H1: β ≠ 0 (HR ≠ 1, efecto)
+
+Nivel de significancia: α = 0.05 (puedes cambiar alpha en el script si deseas otro nivel).
+
+# 8. Conclusión
+
+El análisis muestra que las puntuaciones de las preguntas (Puntuacion_P1 a Puntuacion_P10) y la edad son predictores clave para el diagnóstico de ASD. El modelo de regresión logística estima la probabilidad de un diagnóstico positivo basado en estas variables. Los odds ratios, visualizados en el gráfico anterior, indican la fuerza de la asociación entre cada predictor y el diagnóstico. La curva ROC y el AUC reflejan un rendimiento predictivo adecuado, donde un AUC cercano a 1 sugiere buena capacidad discriminativa. Este modelo puede ser útil para identificar factores de riesgo de ASD, aunque podría mejorarse con más variables o criterios clínicos adicionales.

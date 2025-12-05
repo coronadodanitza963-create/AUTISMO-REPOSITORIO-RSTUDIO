@@ -1,0 +1,301 @@
+---
+title: "ENTREGA PC4 - 1"
+format: html
+---
+# Introducción:
+
+El trabajo tiene como propósito analizar y describir, de manera rigurosa y sistemática, los procedimientos implementados en un documento técnico elaborado mediante Quarto, orientado al estudio de diversas técnicas de análisis multivariado aplicadas a un conjunto de datos clínicos. En este contexto, se examinan métodos de agrupamiento no supervisado, entre ellos el clustering jerárquico y el algoritmo k-means, junto con etapas fundamentales de preprocesamiento, estandarización y evaluación de la estructura interna de los datos. Dichas herramientas permiten identificar patrones subyacentes y posibles subgrupos dentro de una población de pacientes, aspecto de especial relevancia en disciplinas como la nefrología, la salud pública y la investigación biomédica. A lo largo del proyecto se expone de manera detallada cada una de las operaciones realizadas, su propósito estadístico y su utilidad práctica, con el fin de brindar una comprensión integral del proceso analítico.
+
+# Instalar y cargar los paquetes
+
+#Qué se hace
+Primero se instalan e importan varias librerías de R (factoextra, cluster, tidyverse, rio, here).
+
+#Por qué
+
+Cada paquete cumple una función clave:
+
+#factoextra → para visualizar clustering y PCA.
+
+#cluster → para métodos de agrupamiento.
+
+#rio → facilita importar y exportar datos.
+
+#here → permite ubicar archivos sin escribir rutas completas.
+
+#tidyverse → manipulación eficiente de datos.
+
+Se cargan al inicio para dejar el entorno listo para todo el análisis.
+
+```{r}
+install.packages("factoextra")
+install.packages("cluster")
+```
+
+```{r}
+library(factoextra)
+library(cluster)
+library(here)
+library(rio)
+library(tidyverse)
+```
+
+# 2. Importación del dataset
+
+#Qué se hace
+
+Se carga el archivo:
+
+```{r}
+hemo_data <- import(here("data", "s13_hemodialisis.csv"))
+```
+
+#3. Preparación y limpieza de los datos
+
+#Qué se hace
+
+#Se eliminan columnas no numéricas como:
+
+-Sexo
+
+-Enfermedad_Renal
+
+-Se coloca la columna id como nombre de fila.
+
+-Se seleccionan solo variables cuantitativas.
+
+#Por qué
+
+-Los métodos de clustering y PCA solo funcionan con números.
+-Además, variables categóricas pueden distorsionar las distancias matemáticas.
+
+-Estamos preparando el dataset para que sea válido para análisis multivariado.
+
+```{r}
+hemo_data_1 = hemo_data |> 
+  select(-Sexo, -Enfermedad_Renal) |> 
+  column_to_rownames("id")
+```
+
+#4. Escalado o estandarización
+Qué se hace
+
+#Se aplica:
+
+#scale()
+
+#para dejar todas las variables con:
+
+-media = 0
+
+-desviación estándar = 1
+
+#Por qué
+
+-Porque algunas variables tienen unidades muy diferentes:
+
+#Edad puede ir de 20–80
+
+#Urea puede ir de 100–200
+
+#Creatinina puede ir de 1–12
+
+-Si no se estandariza, las variables con valores grandes “pesan más” y sesgan el análisis.
+
+Estandarizar garantiza que todas las variables tengan la misma importancia.
+
+
+```{r}
+hemo_data_escalado = scale(hemo_data_1)
+```
+
+Un vistazo a los datos antes del escalamiento:
+
+```{r}
+head(hemo_data_1)
+```
+
+y un vistazo después del escalamiento:
+
+```{r}
+head(hemo_data_escalado)
+```
+
+#5. Cálculo de distancias
+
+#Qué se hace
+
+-Se calcula una matriz de distancias entre todos los pacientes usando algo como:
+
+dist(hemo_data_escalado)
+
+#Por qué
+
+-Los algoritmos de clustering necesitan saber qué tan similares o diferentes son los individuos.
+La distancia euclidiana es la más usada para datos numéricos.
+
+-La matriz de distancia es la base para construir los grupos.
+
+```{r}
+dist_hemo_data <- dist(hemo_data_escalado, method = "euclidean")
+```
+
+#6. Agrupamiento Jerárquico (Hierarchical clustering)
+
+#Qué se hace
+
+-Se ejecuta hclust() para crear un dendrograma.
+
+-Se visualiza el dendrograma.
+
+-Se “corta” el árbol en un número determinado de clusters usando cutree().
+
+#Por qué
+
+#El clustering jerárquico permite:
+
+-ver cómo se forman grupos paso a paso,
+
+-analizar estructura natural de los datos,
+
+-decidir cuántos clusters parecen razonables visualmente.
+
+Además, no requiere indicar el número de clusters al inicio, lo cual es útil cuando no se conoce la estructura. Da una primera visión de cómo se agrupan los pacientes.
+
+```{r}
+dist_link_hemo_data <- hclust(d = dist_hemo_data, method = "ward.D2")
+```
+
+#Dendrogramas para la visualización de patrones
+
+#Qué se hace:
+Se visualiza el resultado de hclust() con fviz_dend() de factoextra, ajustando el tamaño de etiquetas (cex = 0.7).
+Código: {r} fviz_dend(dist_link_hemo_data, cex = 0.7)
+
+#Por qué se hace:
+Un dendrograma es la representación gráfica del árbol jerárquico: muestra fusiones de clusters (cuanto más bajo el unión, más similares). Ayuda a inspeccionar la estructura jerárquica visualmente, revelando cuántos niveles o grupos hay.
+Es clave para decidir cortes (número de clusters), ya que el algoritmo no lo decide automáticamente.
+
+```{r}
+fviz_dend(dist_link_hemo_data, cex = 0.7)
+```
+
+
+#¿Cúantos grupos se formaron en el dendrograma?
+
+#Qué se hace:
+
+-Se vuelve a usar fviz_dend(), pero ahora especificando k = 3 (número de clusters), colores personalizados, etiquetas por color y rectángulos alrededor de grupos.
+
+#Por qué se hace:
+
+-El dendrograma no indica automáticamente el número de grupos; el investigador decide basado en la visual (aquí, 3 grupos claros). k=3 corta el árbol en 3 clusters, coloreándolos para resaltar diferencias.
+-Permite validar subjetivamente: grupos deben ser interpretables (e.g., uno con alto riesgo renal).
+```{r}
+fviz_dend(dist_link_hemo_data, 
+          k = 3,
+          cex = 0.5,
+          k_colors = c("#2E9FDF", "#E7B800", "#FC4E07"),
+          color_labels_by_k = TRUE, 
+          rect = TRUE)
+```
+
+# 3 Agrupamiento con el algoritmo K-Means
+
+# Qué se hace:
+-Se explica el algoritmo: Específica K (número de grupos), inicia centroides aleatorios, asigna puntos al centroide más cercano (distancia euclidiana), recalcula centroides, repite hasta convergencia (máx. 10 iteraciones por defecto).
+
+# Por qué se hace:
+-A diferencia del jerárquico (bottom-up, no requiere K inicial), K-means es particional y requiere K predefined, pero es más eficiente para datasets grandes. Maximiza similitud intra-grupo y minimiza inter-grupo.
+
+-Útil para datos clínicos: centroides representan "pacientes promedio" por grupo.
+
+#El problema y dataset para este ejercicio
+
+#Qué se hace:
+Se reutiliza el mismo dataset y problema del clustering jerárquico.
+
+#Por qué se hace:
+Para comparar técnicas: Muestra que K-means puede aplicarse a los mismos datos escalados, permitiendo validar consistencia entre métodos.
+
+#Estimando el número óptimo de clusters
+
+#Qué se hace:
+Se escala nuevamente los datos (ya hecho antes: hemo_data_escalado = scale(hemo_data_1)).
+Se usa fviz_nbclust() con método "wss" (within-sum-of-squares), probando múltiples K, y agrega una línea vertical en K=3.
+Código: {r} fviz_nbclust(hemo_data_escalado, kmeans, nstart = 25, method = "wss") + geom_vline(xintercept = 3, linetype = 2)
+
+# Por qué se hace:
+K-means requiere K; este "método del codo" grafica WSS vs. K: el "quiebre" (codo) indica K óptimo donde agregar más clusters no reduce mucho la varianza (aquí, 3).
+nstart=25 prueba múltiples inicios aleatorios para estabilidad, ya que K-means es sensible a inicializaciones.
+
+```{r}
+hemo_data_escalado = scale(hemo_data_1)
+```
+
+Ahora graficamos la suma de cuadrados dentro de los gráficos
+
+```{r}
+fviz_nbclust(hemo_data_escalado, kmeans, nstart = 25, method = "wss") + 
+  geom_vline(xintercept = 3, linetype = 2)
+```
+
+El punto donde la curva forma una "rodilla" o quiebre suele indicar el número óptimo de clústeres. Para nuestro gráfico, es en el número de cluster 3.
+
+## 3.3 Cálculo del agrupamiento k-means
+
+#Qué se hace:
+Fija semilla para reproducibilidad (set.seed(123)).
+Ejecuta kmeans() con K=3 y nstart=25.
+Imprime resultados: {r} km_res <- kmeans(hemo_data_escalado, 3, nstart = 25) y {r} km_res.
+
+#Por qué se hace:
+Calcula clusters: Produce medias de clusters (centroides) y asignaciones de pacientes.
+nstart=25 asegura resultados estables; semilla para reproducibilidad.
+
+```{r}
+set.seed(123)
+km_res <- kmeans(hemo_data_escalado, 3, nstart = 25)
+```
+
+```{r}
+km_res
+```
+
+El resultado muestra dos cosas:
+
+1.  **Las medias o centros de los clústeres** (*Cluster means*): una matriz cuyas filas corresponden al número de clúster (1 a 3) y cuyas columnas representan las variables.
+
+2.  **Un vector de asignación de clúster** (*Clustering vector*): un vector de números enteros (de 1 a 3) que indica a qué clúster ha sido asignado cada punto (para nuestro dataset, cada paciente).
+
+## 3.4 Visualización de los clústeres k-means
+
+#Qué se hace:
+Usa fviz_cluster() para graficar, aplicando PCA internamente para reducir a 2D, con elipses y colores.
+Código: {r} fviz_cluster(km_res, data = hemo_data_escalado, palette = c("#2E9FDF", "#E7B800", "#FC4E07"), ellipse.type = "euclid", repel = TRUE, ggtheme = theme_minimal())
+
+#Por qué se hace:
+Visualiza en 2D (vía PCA) porque hay >2 variables. Muestra puntos coloreados por cluster, con elipses indicando fronteras.
+PCA reduce dimensionalidad sin perder mucha info, permitiendo ver separación de grupos.
+
+```{r}
+fviz_cluster(
+  km_res,
+  data = hemo_data_escalado,
+  palette = c("#2E9FDF", "#E7B800", "#FC4E07"),
+  ellipse.type = "euclid",
+  repel = TRUE,
+  ggtheme = theme_minimal()
+)
+```
+
+### 3.4.1 ¿Cómo interpretar?
+#Qué se hace:
+Explica el gráfico: Puntos son pacientes, ejes son componentes principales (Dim1, Dim2). Grupos formados minimizan error.
+
+#Por qué se hace:
+#Para contextualizar:
+Clusters no son el fin; sirven para hipótesis (e.g., diferencias en creatinina entre grupos).
+
+# Conclusión
+En conclusión, el presente trabajo permitió examinar de manera estructurada los procedimientos desarrollados en un documento técnico elaborado en Quarto, orientado al análisis multivariado de datos clínicos. La revisión de los métodos de agrupamiento no supervisado —como el clustering jerárquico y el algoritmo k-means—, junto con las etapas de preprocesamiento, estandarización y evaluación de la estructura de los datos, evidenció la utilidad de estas herramientas para identificar patrones relevantes y subgrupos dentro de una población de pacientes. La aplicación de estas técnicas resulta particularmente significativa en campos como la nefrología, la salud pública y la investigación biomédica. En conjunto, el análisis realizado contribuye a una comprensión más profunda del proceso analítico y resalta la importancia de emplear metodologías estadísticas adecuadas para el estudio de fenómenos clínicos complejos.

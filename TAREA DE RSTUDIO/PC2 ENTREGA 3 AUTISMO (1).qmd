@@ -1,0 +1,143 @@
+---
+title: "PC2 ENTREGA 3 - AUTISMO"
+format: html
+editor: Grupo 2 
+---
+
+# Introducción
+
+Este script realiza un análisis estadístico del dataset "autismo.csv" para explorar relaciones entre las variables y el diagnóstico de trastorno del espectro autista (Diagnostico_ASD). Se realizarán una regresión lineal simple, una prueba t de Student y un análisis de varianza (ANOVA) para investigar posibles asociaciones entre las variables predictoras y el diagnóstico de autismo. El objetivo es entender cómo las puntuaciones de las preguntas (P1-P10) y otras variables categóricas pueden estar relacionadas con el diagnóstico.
+
+# Instalación de paquetes necesarios
+
+Se instalan los paquetes necesarios para realizar los análisis estadísticos y gráficos
+
+```{r}
+# - dplyr: para manipulación de datos.
+# - ggplot2: para visualización de datos.
+# - car: para realizar análisis de varianza.
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("car")
+```
+
+# Carga de paquetes necesarios
+
+```{r}
+# Se cargan los paquetes instalados para usar sus funciones en el análisis.
+library(dplyr)
+library(ggplot2)
+library(car)
+```
+
+# Carga del dataset
+
+-   Se carga el dataset "autismo.csv" desde el directorio de trabajo. Asegúrate de que el archivo esté en el directorio correcto.
+
+-   **Por qué:** Necesitamos cargar los datos para realizar los análisis estadísticos posteriores.
+
+```{r}
+data <- read.csv("C:/Users/Tu Usuario/Desktop/DATA/autismo.csv", stringsAsFactors = TRUE)
+```
+
+# Regresión lineal simple
+
+-   **Qué se va a hacer:** Realizaremos una regresión lineal simple para modelar la relación entre la puntuación total **(suma de P1 a P10)** y el diagnóstico de autismo **(Diagnostico_ASD)**. Convertiremos Diagnostico_ASD a una variable numérica **(0 para "No", 1 para "Sí")** para usar la regresión.
+
+-   **Por qué:** La regresión lineal nos permite evaluar si la puntuación total es un predictor significativo del diagnóstico de autismo, asumiendo una relación lineal entre estas variables.
+
+```{r}
+# Si no tienes ggplot2 instalado, descomenta la siguiente línea:
+# install.packages("ggplot2")
+
+library(ggplot2)
+
+# Calcular la puntuación total
+data$Puntuacion_Total <- rowSums(data[, paste0("Puntuacion_P", 1:10)])
+
+# Convertir diagnóstico a variable numérica
+data$Diagnostico_ASD_num <- ifelse(data$Diagnostico_ASD == "Sí", 1, 0)
+
+# Ajustar modelo de regresión
+modelo <- lm(Diagnostico_ASD_num ~ Puntuacion_Total, data = data)
+
+# Resumen del modelo
+summary(modelo)
+
+# Graficar con ggplot2
+ggplot(data, aes(x = Puntuacion_Total, y = Diagnostico_ASD_num)) +
+  geom_point(color = "blue", alpha = 0.6) +  # puntos
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # línea de regresión
+  labs(title = "Regresión lineal: Puntuación Total vs Diagnóstico de Autismo",
+       x = "Puntuación Total (P1 a P10)",
+       y = "Diagnóstico de Autismo (0 = No, 1 = Sí)") +
+  theme_minimal()
+
+
+```
+
+Hipótesis nula (H₀): No existe una relación lineal significativa entre la puntuación total y el diagnóstico de autismo. Es decir, las variaciones en la puntuación total no predicen cambios en el diagnóstico.
+(β₁ = 0)
+
+Hipótesis alternativa (H₁): Existe una relación lineal significativa entre la puntuación total y el diagnóstico de autismo. Es decir, las puntuaciones más altas (o bajas) se asocian con mayor probabilidad de diagnóstico.
+(β₁ ≠ 0)
+
+Interpretación esperada: Si el valor p del coeficiente de regresión es menor que 0.05, se rechaza H₀ y se concluye que la puntuación total tiene una influencia significativa en el diagnóstico.
+
+# Prueba t de student para variables independientes
+
+-   **Qué se va a hacer:** Realizaremos una prueba t de Student para comparar la puntuación total entre los grupos con y sin diagnóstico de autismo (Diagnostico_ASD).
+
+-   **Por qué:** La prueba t evalúa si hay diferencias significativas en las medias de la puntuación total entre los dos grupos, lo que puede indicar si las puntuaciones están asociadas con el diagnóstico.
+
+```{r}
+grupo_si <- data$Puntuacion_Total[data$Diagnostico_ASD == "Sí"] # Puntuaciones para grupo con diagnóstico
+grupo_no <- data$Puntuacion_Total[data$Diagnostico_ASD == "No"] # Puntuaciones para grupo sin diagnóstico
+t_test <- t.test(grupo_si, grupo_no, var.equal = FALSE) # Realiza la prueba t de Student
+print(t_test) # Muestra los resultados
+# Visualización (opcional) para comparar las distribuciones
+ggplot(data, aes(x = Diagnostico_ASD, y = Puntuacion_Total, fill = Diagnostico_ASD)) +
+  geom_boxplot() +
+  labs(title = "Comparación de Puntuación Total por Diagnóstico ASD",
+       x = "Diagnóstico ASD", y = "Puntuación Total")
+```
+
+Hipótesis nula (H₀): Las medias de la puntuación total son iguales entre los grupos con y sin diagnóstico de autismo.
+(μ₁ = μ₂)
+
+Hipótesis alternativa (H₁): Las medias de la puntuación total son diferentes entre los grupos con y sin diagnóstico de autismo.
+(μ₁ ≠ μ₂)
+
+# Análisis de varianza (ANOVA)
+
+**Qué se va a hacer:** Realizaremos un ANOVA para evaluar si la puntuación total varía significativamente según la etnicidad (Etnicidad) en el contexto del diagnóstico de autismo.
+
+**Por qué:** El ANOVA nos permite determinar si las diferencias en las puntuaciones totales entre los grupos de etnicidad son estadísticamente significativas, lo que podría indicar influencias culturales o demográficas en las puntuaciones.
+
+```{r}
+anova_model <- aov(Puntuacion_Total ~ Etnicidad, data = data) # Ajusta el modelo ANOVA
+summary(anova_model) # Muestra los resultados
+# Visualización (opcional) para explorar diferencias por etnicidad
+ggplot(data, aes(x = Etnicidad, y = Puntuacion_Total, fill = Etnicidad)) +
+  geom_boxplot() +
+  labs(title = "Puntuación Total por Etnicidad",
+       x = "Etnicidad", y = "Puntuación Total") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rota etiquetas para mejor legibilidad
+```
+
+Hipótesis nula (H₀): No existen diferencias significativas en la puntuación total entre los diferentes grupos de etnicidad.
+(μ₁ = μ₂ = μ₃ = ... = μₖ)
+
+Hipótesis alternativa (H₁): Al menos un grupo de etnicidad presenta una media de puntuación total significativamente diferente.
+
+# Conclusión
+
+Este script ha realizado un análisis estadístico del dataset "autismo.csv" para investigar la relación entre las puntuaciones de las preguntas **(P1-P10)** y el diagnóstico de autismo.
+
+-   La regresión lineal simple mostró si la puntuación total es un predictor significativo del diagnóstico, con un resumen que indica la significancia estadística y la fuerza de la relación.
+
+-   La prueba t de Student evaluó diferencias en las puntuaciones totales entre los grupos con y sin diagnóstico, proporcionando evidencia sobre si las puntuaciones son mayores en un grupo.
+
+-   El **ANOVA** examinó si la etnicidad influye en las puntuaciones totales, lo que puede sugerir diferencias culturales o demográficas en las respuestas.
+
+-   Los resultados deben interpretarse considerando limitaciones como el tamaño de la muestra, la representatividad de los datos y posibles sesgos en la recolección.

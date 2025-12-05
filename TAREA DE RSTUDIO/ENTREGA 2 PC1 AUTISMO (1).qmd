@@ -1,0 +1,106 @@
+---
+title: "ENTREGA 2 PC1 AUTISMO"
+format: html
+editor: visual
+---
+
+# Introducción:
+
+El presente documento tiene como finalidad mostrar el flujo de trabajo inicial en el análisis de datos utilizando el lenguaje de programación **R** y el sistema de documentación **Quarto**. Para este ejercicio se emplea un dataset relacionado con autismo, el cual contiene información de tipo clínico, demográfico y de resultados de evaluación.
+
+*A lo largo del documento se abordarán los siguientes puntos:*
+
+-   **Importación y exportación del dataset**: se explicará cómo cargar los datos desde un archivo `.csv` ubicado en una carpeta específica del sistema, y cómo exportarlos nuevamente después de aplicar modificaciones o limpiezas.
+
+-   **Limpieza de datos**: se realizará la estandarización de nombres de variables, así como la unificación de categorías en variables cualitativas (por ejemplo, género), con el objetivo de evitar inconsistencias que puedan afectar los análisis posteriores.
+
+-   **Transformación de datos**: se presentarán ejemplos de creación de nuevas variables a partir de las existentes, como la clasificación de los individuos en grupos de edad, lo que facilita la exploración descriptiva y el análisis comparativo.
+
+En conjunto, estos pasos constituyen la base de un flujo de trabajo reproducible y ordenado en el análisis de datos, garantizando que la información utilizada esté limpia, estructurada y lista para estudios más avanzados, como análisis estadísticos, modelado o visualización de resultados.
+
+# Cargar paquetes necesarios: 
+
+-   Cargar los paquetes necesarios al inicio del análisis en R es esencial porque permite acceder a funciones especializadas para importar, limpiar, transformar y explorar datos.
+
+-   Además, garantiza que el flujo de trabajo sea **reproducible, eficiente y organizado**, evitando errores y facilitando que cualquier persona pueda replicar los resultados.
+
+```{r}
+# Carga de paquetes necesarios
+library(tidyverse)   # Incluye dplyr, ggplot2, readr, etc.
+library(janitor)     # Para limpieza de nombres y tablas
+library(skimr)       # Para exploración rápida del dataset
+```
+
+# a. Importación y exportación del dataset
+
+En esta sección aprenderemos a **importar** el dataset `autismo.csv` desde el directorio de trabajo y luego a **exportarlo** tras posibles modificaciones. Esto es esencial para tener un flujo de trabajo reproducible, donde los datos crudos pueden ser importados, procesados y nuevamente guardados en un formato limpio. Tendremos que crear una carpeta llamada DATA en el escritorio, cambiamos la ruta de "TUusuario" por el nombre de nuestro ordenador, y luego cargarlo dando click en el botón de play en el script.
+
+```{r}
+# Importar el dataset
+autismo <- read_csv("C:/Users/Franco Rodrigo/Desktop/Data/autismo.csv")
+
+# Visualizar las primeras filas
+head(autismo)
+
+# Exportar el dataset (por ejemplo, en formato .csv limpio)
+write_csv(autismo, "autismo_exportado.csv")
+```
+
+# b. Limpieza y transformación de datos
+
+Cuando trabajamos con datos reales, a menudo encontramos problemas como **nombres de columnas poco claros**, **categorías mal escritas**, o la necesidad de **transformar variables** para facilitar el análisis.\
+Aquí aplicaremos limpieza de nombres y un ejemplo de transformación.
+
+## Limpieza de nombres de variables
+
+El paquete `janitor` nos permite estandarizar nombres de columnas para que sean consistentes y fáciles de manejar (minúsculas, sin espacios, ni caracteres especiales).
+
+```{r}
+# Limpiar nombres de columnas
+autismo <- autismo %>% 
+  clean_names()
+
+# Verificar cambios
+names(autismo)
+```
+
+## Limpieza de categorías
+
+Si en el dataset existen categorías repetidas o con variaciones de escritura (ej. "male", "Male", "M"), podemos unificarlas:
+
+```{r}
+# Limpieza de categorías en la variable "genero"
+autismo <- autismo %>%
+  mutate(genero = str_to_lower(genero)) %>%
+  mutate(genero = recode(genero,
+                         "m" = "male",
+                         "f" = "female"))
+
+# Revisar frecuencias
+table(autismo$genero)
+```
+
+## Transformación de datos
+
+Un paso común es **colapsar** categorías en grupos más grandes o **crear nuevas variables** derivadas.
+
+**Ejemplo:** si tenemos la edad, podemos agrupar en rangos etarios:
+
+```{r}
+# Asegurar que "edad" sea numérica
+autismo <- autismo %>%
+  mutate(edad = as.numeric(edad))
+
+# Crear variable de grupos de edad
+autismo <- autismo %>%
+  mutate(age_group = case_when(
+    edad <= 10 ~ "Niñez",
+    edad > 10 & edad <= 18 ~ "Adolescencia",
+    edad > 18 & edad <= 40 ~ "Adulto joven",
+    edad > 40 ~ "Adulto mayor",
+    TRUE ~ "Desconocido"
+  ))
+
+# Ver distribución por grupos
+table(autismo$age_group)
+```

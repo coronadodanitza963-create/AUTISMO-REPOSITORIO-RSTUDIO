@@ -1,0 +1,170 @@
+---
+title: "ENTREGA 3 PC1 AUTISMO"
+format: html
+editor: visual
+---
+
+## a. Introducción:
+
+Este proyecto tiene como objetivo realizar un análisis de datos utilizando R y documentarlo en **Quarto**. El flujo de trabajo incluye:
+
+1.  Importación y limpieza de datos.
+
+2.  Análisis descriptivo con tablas y gráficos.
+
+3.  Elaboración de la **Tabla 1** (características de la muestra).
+
+4.  Pruebas inferenciales para explorar asociaciones.
+
+5.  Un modelo predictivo (regresión).
+
+6.  Documentación del proceso, pensada para ser publicada en un repositorio de **GitHub**.
+
+El dataset utilizado es `autismo.csv`, el cual contiene información de evaluación relacionada con autismo.
+
+## b. Instalación de paquetes necesarios:
+
+Primero instalamos y cargamos los paquetes requeridos. Es importante porque permiten trabajar con datos, analizarlos y presentar resultados de forma clara.
+
+```{r}
+# Instalación (si es necesario, descomentar)
+# install.packages(c("tidyverse", "skimr", "janitor", "gtsummary", "GGally", "caret"))
+
+# Cargar paquetes
+library(tidyverse)   # Manipulación y visualización
+library(skimr)       # Resumen detallado de datos
+library(janitor)     # Limpieza de nombres de variables
+library(gtsummary)   # Creación de Tabla 1
+library(GGally)      # Análisis exploratorio
+library(caret)       # Modelado predictivo
+```
+
+# c. Importación de datos: 
+
+```{r}
+# Importar el dataset
+autismo <- read_csv("C:/Users/Franco Rodrigo/Desktop/Data/autismo.csv")
+
+# Limpiar nombres de variables
+autismo <- autismo %>% clean_names()
+
+# Vista preliminar
+head(autismo)
+```
+
+# d. Resumen y limpieza de datos:
+
+Documentamos el procedimiento para **resumir los datos**:
+
+```{r}
+# Dimensiones del dataset
+dim(autismo)
+
+# Resumen estadístico
+skim(autismo)
+
+# Verificar valores faltantes
+colSums(is.na(autismo))
+```
+
+# d. Análisis descriptivo: 
+
+# Estadísticas generales
+
+```{r}
+summary(autismo)
+```
+
+# Visualización inicial
+
+```{r}
+# Histograma de una variable cuantitativa (ejemplo: puntuación total si existe)
+autismo %>% 
+  ggplot(aes(x = puntuacion_p1)) +
+  geom_histogram(bins = 20, fill = "steelblue", color = "white") +
+  labs(title = "Distribución de puntuación P1")
+```
+
+# Creación de la Tabla 1
+
+La **Tabla 1** es el resumen de características de la muestra (variables sociodemográficas y clínicas).
+
+```{r}
+# Tabla 1 con gtsummary
+tabla1 <- autismo %>%
+  select(genero, edad, puntuacion_p1, puntuacion_p2, puntuacion_p3, puntuacion_p4) %>%
+  tbl_summary(by = genero, missing = "no") %>%
+  add_overall() %>%
+  modify_header(label ~ "**Variable**") %>%
+  bold_labels()
+
+tabla1
+```
+
+# Pruebas inferenciales
+
+-   En esta parte se aplicarán **pruebas inferenciales** para evaluar posibles asociaciones entre variables.
+
+-   Se utilizarán pruebas de comparación de medias (t-test) y de independencia (Chi-cuadrado), dependiendo de si las variables son numéricas o categóricas.
+
+# Ejemplo de comparación de medias (t-test):
+
+```{r}
+t.test(puntuacion_p1 ~ genero, data = autismo)
+```
+
+# Ejemplo de prueba de independencia (Chi-cuadrado):
+
+```{r}
+# Si hay una variable categórica 'diagnostico' en el dataset
+# chisq.test(table(autismo$genero, autismo$diagnostico))
+```
+
+# Modelado predictivo
+
+-   Finalmente, se ajustará un **modelo de regresión logística** para predecir el diagnóstico de autismo en función de variables clínicas y demográficas.
+
+-   Se evaluará el desempeño del modelo mediante métricas de clasificación como la matriz de confusión, precisión y sensibilidad.
+
+Ejemplo con **regresión logística** para predecir un diagnóstico (si existe una variable binaria `diagnostico`):
+
+```{r}
+# Convertimos la variable diagnostico_autismo en factor (si no lo está)
+autismo$diagnostico_autismo <- as.factor(autismo$diagnostico_autismo)
+
+# Dividir datos en entrenamiento y prueba
+set.seed(123)
+trainIndex <- createDataPartition(autismo$diagnostico_autismo, p = 0.7, list = FALSE)
+train <- autismo[trainIndex, ]
+test  <- autismo[-trainIndex, ]
+
+# Modelo de regresión logística
+modelo <- glm(diagnostico_autismo ~ edad + genero + puntuacion_p1 + puntuacion_p2 + puntuacion_p3, 
+              data = train, family = binomial)
+
+summary(modelo)
+
+# Predicción
+pred <- predict(modelo, newdata = test, type = "response")
+pred_class <- ifelse(pred > 0.5, 1, 0)
+
+# Matriz de confusión
+confusionMatrix(as.factor(pred_class), as.factor(test$diagnostico_autismo))
+
+```
+
+# Conclusión:
+
+*Este documento mostró cómo:*
+
+-   Importar y limpiar datos.
+
+-   Resumir la información.
+
+-   Elaborar la **Tabla 1**.
+
+-   Aplicar pruebas estadísticas.
+
+-   Construir un modelo predictivo.
+
+El proyecto puede publicarse en **GitHub** incluyendo este archivo `.qmd`, el dataset `.csv` y un README explicativo para la reproducción del análisis.

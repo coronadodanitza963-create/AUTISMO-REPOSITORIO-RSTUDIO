@@ -1,0 +1,150 @@
+---
+title: "Funciones adicionales y activación de paquetes en RStudio"
+author: "Grupo de Trabajo"
+format: html
+editor: visual
+---
+
+## 1. Función para calcular la Tasa de Filtración Glomerular (TFG)
+
+La TFG es una medida de la función renal, que indica la cantidad de sangre que pasa por los glomérulos de los riñones por minuto. Es crucial para diagnosticar y monitorear la salud renal.
+
+**Fórmula:** TFG = ((140 - Edad) \* Peso) / (72 \* Creatinina en suero)
+
+**Valores normales:** - TFG normal: \> 90 ml/min/1.73m² - TFG reducido: \< 60 ml/min/1.73m²
+
+**Desarrollo en RStudio:**
+
+```{r}
+calcular_tfg <- function(edad, peso, creatinina) {
+  tfg <- ((140 - edad) * peso) / (72 * creatinina)
+  return(tfg)
+}
+
+# Ejemplo de uso
+calcular_tfg(30, 70, 1.0)  # Devuelve la TFG en ml/min/1.73m²
+```
+
+**Importancia:** La TFG es fundamental para detectar la insuficiencia renal temprana, lo que permite iniciar tratamientos antes de que se presenten daños irreversibles.
+
+------------------------------------------------------------------------
+
+## 2. Función para calcular la Hipertensión Arterial
+
+La hipertensión arterial es una condición médica en la que la presión sanguínea en las arterias se mantiene alta. Es un factor de riesgo importante para enfermedades cardiovasculares.
+
+**Fórmula:** Hipertensión = Si la presión sistólica ≥ 140 mmHg o la presión diastólica ≥ 90 mmHg.
+
+**Valores normales:** - Normal: Presión Sistólica \< 120 mmHg y Diastólica \< 80 mmHg - Hipertensión: ≥ 140/90 mmHg
+
+**Desarrollo en RStudio:**
+
+```{r}
+calcular_hipertension <- function(sistolica, diastolica) {
+  if (sistolica >= 140 || diastolica >= 90) {
+    return("Hipertensión")
+  } else {
+    return("Normal")
+  }
+}
+
+# Ejemplo de uso
+calcular_hipertension(145, 95)  # Devuelve "Hipertensión"
+```
+
+**Importancia:** La hipertensión es un factor de riesgo principal para enfermedades cardíacas, accidentes cerebrovasculares y daño renal. Monitorear la presión arterial es clave para prevenir estas condiciones.
+
+------------------------------------------------------------------------
+
+## 3. Función para calcular el Índice de Masa Corporal (IMC) Ajustado para Edad
+
+El IMC es una medida de la grasa corporal basada en el peso y la altura, pero este cálculo se ajusta para la edad en niños y adolescentes para reflejar su crecimiento.
+
+**Fórmula:** IMC ajustado = Peso (kg) / (Altura (m))\^2 (con ajustes según la edad)
+
+**Valores normales:** - Niños y adolescentes: IMC ajustado de acuerdo a tablas de referencia de la OMS.
+
+**Desarrollo en RStudio:**
+
+```{r}
+calcular_imc_ajustado <- function(peso, altura, edad) {
+  imc <- peso / (altura^2)
+  if (edad < 18) {
+    # Aplicar ajustes para edad, de acuerdo a tablas de referencia
+    imc_ajustado <- imc * 1.2  # Ejemplo de ajuste
+  } else {
+    imc_ajustado <- imc
+  }
+  return(imc_ajustado)
+}
+
+# Ejemplo de uso
+calcular_imc_ajustado(60, 1.65, 15)  # Devuelve el IMC ajustado para edad
+```
+
+**Importancia:** El IMC ajustado para edad es especialmente importante en pediatría, ya que los valores de referencia para la salud cambian conforme los niños y adolescentes crecen.
+
+------------------------------------------------------------------------
+
+## 4. Función para calcular la Capacidad Vital Forzada (FVC)
+
+La FVC es una medición utilizada en pruebas pulmonares para evaluar la cantidad total de aire que se puede exhalar después de una inhalación profunda.
+
+**Fórmula:** FVC = Volumen total de aire exhalado tras una inhalación máxima
+
+**Valores normales:** - Varía según la edad, el género y el tamaño corporal.
+
+**Desarrollo en RStudio:**
+
+```{r}
+calcular_fvc <- function(volumen_inhalado, volumen_exhalado) {
+  fvc <- volumen_inhalado - volumen_exhalado
+  return(fvc)
+}
+
+# Ejemplo de uso
+calcular_fvc(5000, 4000)  # Devuelve la FVC en ml
+```
+
+**Importancia:** La medición de la FVC es fundamental para evaluar enfermedades pulmonares, como la EPOC, el asma y otras afecciones respiratorias.
+
+------------------------------------------------------------------------
+
+## c. Descarga y activación de paquetes (3 paquetes adicionales)
+
+Para descargar y activar paquetes en R, utilizamos las funciones `install.packages()` para instalar los paquetes y `library()` para cargarlos en la sesión de trabajo. A continuación, se muestran tres paquetes útiles en el análisis médico:
+
+1.  **ggplot2**: Paquete para la creación de gráficos y visualizaciones.
+2.  **dplyr**: Paquete para la manipulación de datos.
+3.  **tidyverse**: Paquete que incluye varios paquetes relacionados con la manipulación de datos y visualización.
+
+### Código para descargar y activar los paquetes
+
+```{r}
+# Descargar los paquetes si no están instalados
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(dplyr)) install.packages("dplyr")
+if(!require(tidyverse)) install.packages("tidyverse")
+
+# Activar los paquetes
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+```
+
+### Descripción de los paquetes
+
+1.  **ggplot2**: Este paquete permite crear gráficos avanzados para visualizar datos médicos, como gráficos de dispersión, líneas, barras y más.
+
+2.  **dplyr**: Es utilizado para manipular datos, incluyendo filtrado, agrupamiento, y resumen, lo que facilita el análisis de grandes cantidades de datos médicos.
+
+3.  **tidyverse**: Incluye varios paquetes como `ggplot2`, `dplyr`, `tidyr`, entre otros, y es muy utilizado para transformar y visualizar datos médicos de forma eficiente.
+
+------------------------------------------------------------------------
+
+# Carpetas Relevantes
+
+-   **input**: Contiene los archivos de entrada, como los datos y otros recursos necesarios para el análisis.
+-   **output**: Carpeta donde se guardan los resultados, como gráficos y archivos generados.
+-   **scripts**: Carpeta que almacena los scripts de R utilizados para procesar los datos y generar los resultados.
+-   **projects**: Carpeta donde se organiza el proyecto, incluyendo scripts, resultados y datos utilizados.
